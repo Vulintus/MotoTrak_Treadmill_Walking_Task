@@ -14,6 +14,7 @@ function Treadmill_Walking_Trial_Stop(behavior, trial)
 %
 
 
+behavior.ui.table.trial.Data{end,end-1} = trial.timer.ttl.TasksExecuted;    %List the number of stimulation pulses.
 behavior.ui.table.trial.Data{end,end} = ...
     sprintf('%1.0f mm', behavior.status.total_distance);                    %Update the distance traveled in the table.
 

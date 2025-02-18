@@ -63,7 +63,8 @@ if is_empty_field(behavior.ui,'display','initialized')                      %If 
     behavior.ui.ax.data.YLim = behavior.ui.display.path_xy_lim(2,:);        %Update the y-axis limits.
 
     %Show a sphere in the system axes to approximate the treadmill.
-    view_angle = 45;                                                        %Set the overhead viewing angle.
+    azimuth = behavior.session.params.ball_view_angle(1);                   %Set the view azimuth.
+    elevation = behavior.session.params.ball_view_angle(2);                 %Set the view elevation.
     cla(behavior.ui.ax.system);                                             %Clear the system diagram axes.
     hold(behavior.ui.ax.system,'on');                                       %Hold the axes for multiple objects.
     [X, Y, Z] = sphere(20);                                                 %Create coordinates for a sphere.    
@@ -80,13 +81,13 @@ if is_empty_field(behavior.ui,'display','initialized')                      %If 
         'EdgeAlpha',0.25,...
         'parent',behavior.ui.ax.system);                                    %Plot the sphere as a surface.
     behavior.ui.display.sphere.omega = zeros(1,3);                          %Create a field to hold angular displacements.
-    view(behavior.ui.ax.system,[0,45]);                                     %View the sphere from an oblique, head-on angle.
+    view(behavior.ui.ax.system,[azimuth,elevation]);                        %View the sphere from an oblique, head-on angle.
     behavior.ui.ax.system.XLim = ...
-        behavior.session.params.ball_radius*[-1,1]/cosd(view_angle);        %Set the x-axis limits.
+        1.05*behavior.session.params.ball_radius*[-1,1]/cosd(elevation);    %Set the x-axis limits.
     behavior.ui.ax.system.YLim = ...
-        behavior.session.params.ball_radius*[-1,1];                         %Set the y-axis limits.
+        1.05*behavior.session.params.ball_radius*[-1,1];                    %Set the y-axis limits.
     behavior.ui.ax.system.ZLim = ...
-        behavior.session.params.ball_radius*[-0.5,1.5];                     %Set the z-axis limits.
+        1.05*behavior.session.params.ball_radius*[-0.5,1.5];                %Set the z-axis limits.
     behavior.ui.ax.system.Box = 'on';                                       %Put a box around the plot.
     behavior.ui.ax.system.TickDir = 'none';                                 %Remove the tick marks.
     behavior.ui.ax.system.XTickLabel = [];                                  %Remove any x tick labels.
@@ -101,7 +102,7 @@ if is_empty_field(behavior.ui,'display','initialized')                      %If 
         behavior.session.params.ball_radius*(-2:0.5:2);                     %Set the y-axis ticks.
     behavior.ui.ax.system.ZTick = ...
         behavior.session.params.ball_radius*(-2:0.5:2);                     %Set the z-axis ticks.
-    
+
     behavior.ui.display.mouse.cad = ...
         Treadmill_Walking_Mouse_Model(behavior.ui.ax.system);               %Add a low-poly 3D mouse to the plot.
 

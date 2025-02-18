@@ -29,20 +29,20 @@ behavior.ui.display.path.data(:) = 0;                                       %Res
 behavior.ui.reward.Text = '0';                                              %Set the trial count display to zero.
 
 %Create the output data file.
-behavior.session.file(1).write = ...
-    Vulintus_Behavior_Create_OmniTrak_File(behavior);                       %Create the output date file-writing structure.
+Vulintus_Behavior_Create_OmniTrak_File(behavior, 1);                        %Create the output date file-writing structure.
 if is_fcn_field(behavior.session.fcn,'send_ttl')                            %If this session has TTL-sending enabled...
     behavior.session.fcn.write_ttl_fcn = ...
-        @(timestamp)behavior.session.file.write.ttl_pulse(timestamp,...
+        @(timestamp)behavior.session.file.write{'TTL_PULSE'}(timestamp,...
         1, 5, 1000*behavior.session.params.ttl_duration);                   %Capture the TTL pulse parameters in the file-writing function.
 end
+behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.  
 
 %Clear the table data.
 behavior.ui.table.trial.Data = {};                                          
 
 %Create a session timer function.
-session_timer = Vulintus_Behavior_Session_Timer(behavior.ui.edit.dur,...
-    behavior.session.time.start);
+session_timer = Vulintus_Behavior_Session_Timer(behavior.ui(1).edit.dur,...
+    behavior.session(1).time.start);
 
 %Enable data streaming.
 behavior.ctrl.otsc.clear(0.1);                                              %Clear any residual values from the serial line.  
@@ -86,17 +86,21 @@ while isequal(behavior.run.root,'session')                                  %Loo
     
 end
     
-behavior.session.file.write.close();                                        %Close the session data file.
 
-%Stop the data stream.
-try                                                                         %Attempt to clear the serial line.    
-    behavior.ctrl.stream.enable(0);                                         %Disable streaming on the controller.
-    behavior.ctrl.otsc.clear(0.1);                                          %Clear any residual values from the serial line.
-catch err                                                                   %If an error occurred...
-    err_path = fullfile(behavior.mainpath, 'Error Reports');                %Create the expected directory name for the error reports.
-    txt = Vulintus_Behavior_Save_Error_Report(err_path,...
-        behavior.task,err,behavior);                                        %Save a copy of the error in the AppData folder.      
+
+%Stop the data stream and request one last clock synchronization block.
+behavior.ctrl.stream.enable(0);                                             %Disable streaming on all devices.
+behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.
+wait_time = toc(behavior.session.timer.main) + 0.25;                        %Wait 250 milliseconds to let all remaining data come in.
+while toc(behavior.session.timer.main) < wait_time                          %Loop through the wait time.
+    Treadmill_Walking_Check_Signal(behavior);                               %Check the incoming signal.
 end
+
+%Close the session data file.
+behavior.session.file.close();
+
+%Clear any residual values from the serial line.
+behavior.ctrl.otsc.clear(0.1);                                              
 
 if isfield(behavior.ui,'msgbox')                                            %If there's a messagebox in the GUI.
     str = sprintf('%s - Session ended, %1.0f stimulations.',...

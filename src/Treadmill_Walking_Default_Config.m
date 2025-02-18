@@ -40,6 +40,9 @@ behavior.program.params.sensor_pos = [...
     ];                                                                      %Sensor position vectors, in spherical coordinates (theta, phi, radius).
 behavior.program.params.sensor_angle = 45;                                  %Angle of the sensor's x-axis to the azimuthal plane of the sphere, in degrees.
 
+%Display options.
+behavior.program.params.ball_view_angle = [0, 45];                          %View angle for the ball diagram [azimuth, elevation].
+
 %Default TTL output parameters.
 behavior.program.params.ttl_pulsetrain_n = 5;
 behavior.program.params.ttl_duration = 1;

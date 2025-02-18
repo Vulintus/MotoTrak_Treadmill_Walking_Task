@@ -27,12 +27,13 @@ behavior.ui.edit.rewards.Value = ...
     sprintf('%1.0f',behavior.session.count.trial);                          %Update the trial count display.
 
 %Write the trial number to the file.
-behavior.session.file.write.trial_start_serial_date(behavior.session.count.trial);     
+behavior.session.file.write{'TRIAL_START_SERIAL_DATE'}(behavior.session.count.trial);     
 if behavior.status.idle                                                     %If the ball was idle on the last reading.                        
-    behavior.session.file.write.ambulation_xy_theta(behavior.status.last_read,...
+    behavior.session.file.write{'AMBULATION_XY_THETA'}(behavior.status.last_read,...
         behavior.status.xy, behavior.status.direction);                     %Write the previous datapoint to the file.
     behavior.status.idle = false;                                           %Indicate the ball is not idle.
 end     
+behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.             
 
 if is_fcn_field(behavior.session.fcn,'reset_count')                         %If a treadmill count reset function has been set...
     behavior.session.fcn.reset_count();                                     %Reset the display on the treadmill.
@@ -59,9 +60,9 @@ if is_fcn_field(behavior.session.fcn,'send_ttl')                            %If 
     trial.timer.ttl.TimerFcn = {@Treadmill_Walking_Timer_Callback_TTL,...
         behavior.session.fcn};                                              %Set the main timer callback.
     start(trial.timer.ttl);                                                 %Start the TTL timer.
-    new_table_row{3} = behavior.session.count.trial;                        %"Stim. Dur."
-    new_table_row{4} = char(datetime,'hh:mm:ss');                           %"Stim. IPI"
-    new_table_row{5} = char(datetime,'hh:mm:ss');                           %"Stim. Count"
+    new_table_row{3} = behavior.session.params.ttl_duration;                %"Stim. Dur."
+    new_table_row{4} = behavior.session.params.ttl_pulsetrain_ipp;          %"Stim. IPI"
+    new_table_row{5} = '-';                                                 %"Stim. Count"
 
 end
 

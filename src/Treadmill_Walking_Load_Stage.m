@@ -47,7 +47,17 @@ for i = 1:behavior.program.num_instances                                    %Ste
         behavior.program.instance(i).sku);                                  %Update any settings on the instance modules.    
     
     behavior.session(i).fcn.send_ttl = [];                                  %Clear any TTL send function.
-    behavior.session(i).fcn.reset_count = [];                               %Clear any count-resetting function.
+    behavior.session(i).fcn.clock_sync = [];                                %Clear any clock synchronization function.
+
+    behavior.session(i).fcn.reset_count = ...
+        @()behavior.ctrl.optiflow.reset('passthrough',...
+        behavior.program.instance(1).port(1));                              %Set the reset function with the passthrough option.
+
+    if is_fcn_field(behavior.ctrl,'device','clocks','get')                  %If this version of "Connect_OmniTrak" has the clock synchronization function.
+        behavior.session(i).fcn.clock_sync = ...
+            @()behavior.ctrl.device.clocks.get('passthrough',...
+            behavior.program.instance(1).port(1),'nowait');                 %Set the clock synchronization function.
+    end
 
     if isnt_empty_field(behavior.ctrl,'ttl')                                %If the primary device has TTL outputs.
         behavior.ctrl.ttl.index.set(1);                                     %Set the TTL output index to 1.
@@ -56,15 +66,6 @@ for i = 1:behavior.program.num_instances                                    %Ste
             ttl_dur = 1000*behavior.session(i).params.ttl_duration;         %Convert the TTL duration to milliseconds.
             behavior.ctrl.ttl.pulse.dur.set(ttl_dur);                       %Set the TTL duration.
         end        
-    end
-
-    if behavior.program.instance(1).port == 0                               %If the treadmill is connected by USB directly...
-        behavior.session(i).fcn.reset_count = ...
-            behavior.ctrl.optiflow.reset();                                 %Set the reset function with no passthrough.
-    else                                                                    %Otherwise...
-        behavior.session(i).fcn.reset_count = ...
-            @()behavior.ctrl.optiflow.reset('passthrough',...
-            behavior.program.instance(1).port);                             %Set the reset function with the passthrough option.
     end
 
 end
