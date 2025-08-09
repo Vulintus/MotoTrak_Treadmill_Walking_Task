@@ -29,6 +29,7 @@ program(i).task = 'Treadmill Walking';                                      %Set
 program(i).abbreviation = 'TW';                                             %Abbreviation of the task name for use in filename.
 program(i).script_root = 'Treadmill_Walking_*';                             %Root name of all behavior-specific scripts.
 program(i).system_name = 'OmniTrak';                                        %Vulintus system name.
+program(i).primary_device = {'MT-ST', 'OT-CC'};                             %Set the primary device name.
 program(i).required_modules = {
     {'MT-ST', 1};
     };                                                                      %Required modules.
@@ -65,12 +66,12 @@ program(i).fcn.session = ...
 
 %System diagram update function.
 program(i).fcn.plot_system = ...
-    @()Treadmill_Walking_System_Diagram(behavior);
+    @()Treadmill_Walking_Plot_System(behavior);
 
 %Data plot update function.
 % program(i).fcn.plot_data = ...
 
 %Input signals processing function.
 program(i).fcn.process_input = ...
-    @(data)Treadmill_Walking_Process_Input(behavior,data);
+    @(packet, src, varargin)Treadmill_Walking_Process_Input(behavior, packet, src, varargin{:});
 

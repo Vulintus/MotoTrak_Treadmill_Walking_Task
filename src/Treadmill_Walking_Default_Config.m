@@ -10,6 +10,8 @@ function Treadmill_Walking_Default_Config(behavior)
 %   UPDATE LOG:
 %   2024-11-14 - Drew Sloan - Function first created, adapted from
 %                             "Vibrotactile_Detection_Default_Config.m".
+%   2025-08-07 - Drew sloan - Added handling functions for incoming OTSC
+%                             packets.
 %
 
 
@@ -50,3 +52,25 @@ behavior.program.params.ttl_pulsetrain_ipp = 1;
 
 %Default recording parameters.
 behavior.program.params.trial_dur = 30;
+
+%Set the streaming settings for the modules.
+behavior.program.params.stream_settings = struct([]);                       %Create an empty structure to hold streaming settings.
+behavior.program.params.stream_settings(1).sku = 'MT-ST';                   %Vibrotactile module.
+behavior.program.params.stream_settings(1).sample_period = 25000;           %Sampling period is 25,000 microseconds.
+behavior.program.params.stream_settings(1).mode = 1;                        %Set the streaming mode to periodic.
+behavior.program.params.stream_settings(1).chunk_size = 12;                 %Chunk size is 12 bytes (OPTICAL_FLOW_DELTA_3VEC).
+behavior.program.params.stream_settings(1).chunk_timeout = 5000;            %Chunking timeout is 5 milliseconds.
+
+%Handling functions for all relevant incoming OTSC packets.
+behavior.ctrl.stream.fcn('MILLIS_MICROS') = ...
+    @(src, varargin)behavior.program.fcn.process_input('MILLIS_MICROS',...
+    src, varargin{:});                                                      %Millisecond and microsecond clock readings.
+behavior.ctrl.stream.fcn('OPTICAL_FLOW_DELTA_XY') = ...
+    @(src, varargin)behavior.program.fcn.process_input('OPTICAL_FLOW_DELTA_XY',...
+    src, varargin{:});                                                      %Current change in x- and y-coordinates from the optical flow sensor.
+behavior.ctrl.stream.fcn('OPTICAL_FLOW_XY') = ...
+    @(src, varargin)behavior.program.fcn.process_input('OPTICAL_FLOW_XY',...
+    src, varargin{:});                                                      %Current x- and y-coordinates from the optical flow sensor.
+behavior.ctrl.stream.fcn('OPTICAL_FLOW_DELTA_3VEC') = ...
+    @(src, varargin)behavior.program.fcn.process_input('OPTICAL_FLOW_DELTA_3VEC',...
+    src, varargin{:});                                                      %Change in value from the three selected optical flow vectors.

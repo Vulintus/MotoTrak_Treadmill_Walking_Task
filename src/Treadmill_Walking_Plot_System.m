@@ -1,31 +1,34 @@
-function Treadmill_Walking_System_Diagram(behavior)
+function Treadmill_Walking_Plot_System(behavior)
 
 %
-% Treadmill_Walking_System_Diagram.m
+% Treadmill_Walking_Plot_System.m
 % 
 %   copyright 2024, Vulintus, Inc.
 %
-%   TREADMILL_WALKING_SYSTEM_DIAGRAM creates and then updates a system
-%   diagram on the system axes of the Vulintus Common Behaivor GUI showing
-%   the recent distance sensor history for the MotoTrak treadmill walking
+%   TREADMILL_WALKING_PLOT_SYSTEM creates and then updates a system diagram
+%   on the system axes of the Vulintus Common Behaivor GUI showing the 
+%   recent distance sensor history for the MotoTrak treadmill walking
 %   behavior.
 %   
 %   UPDATE LOG:
 %   2024-11-14 - Drew Sloan - Function first created, adapted from
 %                             "Vibrotactile_Detection_System_Diagram.m".
+%   2025-08-07 - Drew Sloan - Renamed from
+%                             "Treadmill_Walking_System_Diagram" to
+%                             "Treadmill_Walking_Plot_System".
 %
 
 
 % colors = struct(    'idle',     [0.7 0.7 0.7],...
 %                     'blocked',  [1 0.7 0.7],...
-%                     'licked',   [0 0 1]);                                   %Define the colors to be used in the displays.
+%                     'touched',  [0 0 1]);                                   %Define the colors to be used in the displays.
+% behavior.ctrl.stream.enable(0);
+if ~behavior.status.update_plots                                            %If there's no updates for the plot.
+    return                                                                  %Skip the rest of the function.
+end
 
-if is_empty_field(behavior.ui,'display','initialized')                      %If the display structure isn't yet initialized.
-    behavior.ui.display = struct(   'path',         [],...
-                                    'mouse',        [],...
-                                    'sphere',       [],...                                  
-                                    'initialized',  true);                  %Reset the display field.
-    behavior.status.update_plots = false;                                   %Create an plot update flag in the status field.
+%Create the plot objects if they don't already exist.
+if ~behavior.ui.display.initialized                                         %If the display structure isn't yet initialized.
 
     %Show the distance traveled over time on the data plot.
     mouse_scale = 25;                                                       %Set the mouse body width, in millimeters.
@@ -106,27 +109,30 @@ if is_empty_field(behavior.ui,'display','initialized')                      %If 
     behavior.ui.display.mouse.cad = ...
         Treadmill_Walking_Mouse_Model(behavior.ui.ax.system);               %Add a low-poly 3D mouse to the plot.
 
+    behavior.ui.display.initialized = true;                                 %Indicate that the display is now initialized.
+
 end
 
-if behavior.status.update_plots                                             %If there's new data for updating the plots...
-    % behavior.ctrl.stream.enable(0,'passthrough',1);             
+% behavior.ctrl.stream.enable(0,'passthrough',1);             
+if any(behavior.status.omega ~= 0)                                          %If there's any sphere movement to show...
     rotate(behavior.ui.display.sphere.h,...
         behavior.status.omega([2,1,3]).*[-1,1,1]',...
         norm(rad2deg(behavior.status.omega)),[0, 0, 0]);                    %Rotate the sphere to match.
-    behavior.status.omega(:) = 0;                                           %Clear the cumulative omega.
-    xy = behavior.status.R*behavior.ui.display.mouse.xy';                   %Save the new x-coordinates.
-    set(behavior.ui.display.mouse.h,...
-        'XData',xy(1,:) + behavior.status.xy(1),...
-        'YData',xy(2,:) + behavior.status.xy(2));                           %Update the mouse rotation.
-    behavior.ui.display.path.data(1:249,:) = ...
-        behavior.ui.display.path.data(2:250,:);                             %Shift the path samples down one.
-    behavior.ui.display.path.data(250,:) = behavior.status.xy;              %Add the new position to the 
-    set(behavior.ui.display.path.h,...
-        'XData',behavior.ui.display.path.data(:,1),...
-        'YData',behavior.ui.display.path.data(:,2));                        %Update the mouse rotation.
-    behavior.ui.ax.data.XLim = ...
-        behavior.ui.display.path_xy_lim(1,:) + behavior.status.xy(1);       %Update the x-axis limits.
-    behavior.ui.ax.data.YLim = ...
-        behavior.ui.display.path_xy_lim(2,:) + behavior.status.xy(2);       %Update the y-axis limits.
-    behavior.status.update_plots = false;                                   %Clear the plot update flag.
 end
+behavior.status.omega(:) = 0;                                               %Clear the cumulative omega.
+xy = behavior.status.R*behavior.ui.display.mouse.xy';                       %Save the new x-coordinates.
+set(behavior.ui.display.mouse.h,...
+    'XData',xy(1,:) + behavior.status.xy(1),...
+    'YData',xy(2,:) + behavior.status.xy(2));                               %Update the mouse rotation.
+behavior.ui.display.path.data(1:249,:) = ...
+    behavior.ui.display.path.data(2:250,:);                                 %Shift the path samples down one.
+behavior.ui.display.path.data(250,:) = behavior.status.xy;                  %Add the new position to the 
+set(behavior.ui.display.path.h,...
+    'XData',behavior.ui.display.path.data(:,1),...
+    'YData',behavior.ui.display.path.data(:,2));                            %Update the mouse rotation.
+behavior.ui.ax.data.XLim = ...
+    behavior.ui.display.path_xy_lim(1,:) + behavior.status.xy(1);           %Update the x-axis limits.
+behavior.ui.ax.data.YLim = ...
+    behavior.ui.display.path_xy_lim(2,:) + behavior.status.xy(2);           %Update the y-axis limits.
+
+behavior.status.update_plots = false;                                       %Clear the plot update flag.

@@ -1,4 +1,4 @@
-function Treadmill_Walking_Trial_Stop(behavior, trial)
+function Treadmill_Walking_Trial_Stop(behavior)
 
 %
 % Treadmill_Walking_Trial_Stop.m
@@ -14,12 +14,16 @@ function Treadmill_Walking_Trial_Stop(behavior, trial)
 %
 
 
-behavior.ui.table.trial.Data{end,end-1} = trial.timer.ttl.TasksExecuted;    %List the number of stimulation pulses.
+t = behavior.session.count.trial;                                           %Copy the current trial index to a simpler variable.
+behavior.session.trial(t).stop();                                           %Stop the trial clock.
+
+behavior.ui.table.trial.Data{end,end-1} = ...
+    behavior.session.trial(t).timer.ttl.TasksExecuted;                      %List the number of stimulation pulses.
 behavior.ui.table.trial.Data{end,end} = ...
     sprintf('%1.0f mm', behavior.status.total_distance);                    %Update the distance traveled in the table.
 
 str = sprintf('%s - Trial #%1.0f, distance traveled: %1.0f mm',...
-        char(trial.time.start.datetime,'hh:mm:ss'),...
+        char(behavior.session.trial(t).time.start.datetime,'hh:mm:ss'),...
         behavior.session.count.trial,...
         behavior.status.total_distance);                                    %Create a text string.
 Replace_Msg(behavior.ui.msgbox,str);                                        %Show the text string on the messagebox.

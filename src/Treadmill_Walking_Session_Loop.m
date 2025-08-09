@@ -42,12 +42,14 @@ behavior.ui.table.trial.Data = {};
 
 %Create a session timer function.
 session_timer = Vulintus_Behavior_Session_Timer(behavior.ui(1).edit.dur,...
-    behavior.session(1).time.start);
+    behavior.session.time.start.datetime);
+
+%Create a display timer function.
+display_timer = Vulintus_Behavior_Display_Timer(0.05,...
+    behavior.program.fcn.plot_system);                                      %Refresh the system plot at ~20 Hz.
 
 %Enable data streaming.
-behavior.ctrl.otsc.clear(0.1);                                              %Clear any residual values from the serial line.  
-behavior.ctrl.stream.enable(2);                                             %Enable event-triggered streaming on the controller.
-behavior.ctrl.stream.enable(1,'passthrough',1);                             %Enable periodic streaming on the spherical treadmill.
+Vulintus_Behavior_Stream_Enable(behavior, true, behavior.ui.port);          %Enable streaming.
 behavior.run = Vulintus_Behavior_Run_Class.session;                         %Set the run variable to session mode.
 
 
@@ -56,17 +58,17 @@ behavior.session.timer.main = tic;                                          %Cre
 while isequal(behavior.run.root,'session')                                  %Loop until the user stops the session or closes the program.
     
     while behavior.run == Vulintus_Behavior_Run_Class.session               %Loop until the user clicks "STIMULATE".
-        Treadmill_Walking_Check_Signal(behavior);                           %Check the incoming signal.
+        behavior.ctrl.stream.read(0.005);                                   %Read and process any new streaming data.
     end
 
     if behavior.run == Vulintus_Behavior_Run_Class.session_stimulate        %If the user clicked the stimulate button.
-        trial = Treadmill_Walking_Trial_Start(behavior);                    %Start a trial...
+        Treadmill_Walking_Trial_Start(behavior);                            %Start a trial...
         behavior.run = Vulintus_Behavior_Run_Class.session;                 %Set the run variable back to session mode.
     end
 
     while behavior.run == Vulintus_Behavior_Run_Class.session && ...
-            toc(behavior.session.timer.main) < trial.time.end               %Loop until the end of the trial.
-        Treadmill_Walking_Check_Signal(behavior);                           %Check the incoming signal.
+            ~behavior.session.trial(end).timeout()                          %Loop until the end of the trial.
+        behavior.ctrl.stream.read(0.005);                                   %Read and process any new streaming data.
     end
     
     stop(timerfind('Name','ttl_timer'));                                    %Stop any TTL timer.
@@ -76,7 +78,7 @@ while isequal(behavior.run.root,'session')                                  %Loo
         case {  Vulintus_Behavior_Run_Class.session,...
                 Vulintus_Behavior_Run_Class.session_stimulate,...
              }                                                              %If the session is still running as normal...
-            Treadmill_Walking_Trial_Stop(behavior, trial);                  %Stop the current trial.
+            Treadmill_Walking_Trial_Stop(behavior);                         %Stop the current trial.
             
         case Vulintus_Behavior_Run_Class.session_webcam_preview             %If the user wants to open a webcam preview...    
             Vulintus_Behavior_Launch_Webcam_Preview;                        %Call the toolbox function to launch a webcam preview.
@@ -86,14 +88,20 @@ while isequal(behavior.run.root,'session')                                  %Loo
     
 end
     
-
+%Stop the various display timers.
+stop(display_timer);                                                        %Stop the display timer.
+stop(session_timer);                                                        %Stop the session timer.
+stop(timerfind('Name','ttl_timer'));                                        %Stop the TTL timer.
+delete(timerfind('Name','ttl_timer'));                                      %Delete the TTL timer.
 
 %Stop the data stream and request one last clock synchronization block.
-behavior.ctrl.stream.enable(0);                                             %Disable streaming on all devices.
-behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.
+Vulintus_Behavior_Stream_Enable(behavior, false, behavior.ui.port);         %Disable streaming.
+if is_fcn_field(behavior.session.fcn,'clock_sync')                          %If a clock synchronization function has been set...
+    behavior.session.fcn.clock_sync();                                      %Request a clock synchronization block.
+end
 wait_time = toc(behavior.session.timer.main) + 0.25;                        %Wait 250 milliseconds to let all remaining data come in.
 while toc(behavior.session.timer.main) < wait_time                          %Loop through the wait time.
-    Treadmill_Walking_Check_Signal(behavior);                               %Check the incoming signal.
+    behavior.ctrl.stream.read(0.005);                                       %Read and process any new streaming data.
 end
 
 %Close the session data file.
@@ -102,15 +110,12 @@ behavior.session.file.close();
 %Clear any residual values from the serial line.
 behavior.ctrl.otsc.clear(0.1);                                              
 
+%Show a session end message in the messagebox.
 if isfield(behavior.ui,'msgbox')                                            %If there's a messagebox in the GUI.
     str = sprintf('%s - Session ended, %1.0f stimulations.',...
         char(datetime,'hh:mm:ss'), behavior.session.count.trial);           %Create a message string.
     Add_Msg(behavior.ui.msgbox,str);                                        %Show the message in the messagebox.
 end
-
-stop(session_timer);                                                        %Stop the session timer.
-stop(timerfind('Name','ttl_timer'));                                        %Stop the TTL timer.
-delete(timerfind('Name','ttl_timer'));                                      %Delete the TTL timer.
 
 %Update all of the uicontrols.
 Vulintus_Behavior_Update_Controls(behavior, 'idle');                        %Call the function to update all of the uicontrols.
