@@ -16,26 +16,28 @@ function Treadmill_Walking_Session_Loop(behavior)
 
 
 %Update all of the uicontrols.
+behavior.ui.btn.stimulate.Text = 'STIMULATE';                               %Revert the stimulate button text to the default.
 Vulintus_Behavior_Update_Controls(behavior, 'session');                     %Call the function to update all of the uicontrols.
 Clear_Msg([],[],behavior.ui.msgbox);                                        %Clear the existing messages out of the messagebox.
 
-%Reset the session.
-behavior.status.xy(:) = 0;                                                  %Reset the x-y coordinates.
-behavior.status.direction = 0;                                              %Reset the animal orientation.
-behavior.status.total_distance = 0;                                         %Reset the distance count.
-behavior.status.idle = false;                                               %Indicate the ball is not idle.
-behavior.session.count.trial = 0;                                           %Reset the trial count.
-behavior.ui.display.path.data(:) = 0;                                       %Reset the animal path.
-behavior.ui.reward.Text = '0';                                              %Set the trial count display to zero.
-
 %Create the output data file.
 Vulintus_Behavior_Create_OmniTrak_File(behavior, 1);                        %Create the output date file-writing structure.
-if is_fcn_field(behavior.session.fcn,'send_ttl')                            %If this session has TTL-sending enabled...
+if is_fcn_field(behavior.session.fcn,'start_ttl')                           %If this session has TTL-sending enabled...
     behavior.session.fcn.write_ttl_fcn = ...
-        @(timestamp)behavior.session.file.write{'TTL_PULSE'}(timestamp,...
-        1, 5, 1000*behavior.session.params.ttl_duration);                   %Capture the TTL pulse parameters in the file-writing function.
+        @(timestamp)...
+        behavior.session.file.data.write{'TTL_PULSETRAIN'}(0, 1,...
+        'datetime', timestamp,...
+        'volts', [0, 5],...
+        'pulse_dur', behavior.session.params.ttl_pulse_dur,...
+        'pulse_ipi', behavior.session.params.ttl_pulse_ipi,...
+        'pulse_num', behavior.session.params.ttl_pulsetrain_n);             %Capture the TTL pulse parameters in the file-writing function.
 end
-behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.  
+behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.
+
+%Initialize the session.
+Treadmill_Walking_Session_Initialize(behavior);                             %Call the session initialization functions.
+behavior.session.file.data.write{'SESSION_PARAMS_JSON'}...
+    (behavior.session(1).params);                                           %Write the session parameters as JSON-encoded text.
 
 %Clear the table data.
 behavior.ui.table.trial.Data = {};                                          
@@ -49,7 +51,7 @@ display_timer = Vulintus_Behavior_Display_Timer(0.05,...
     behavior.program.fcn.plot_system);                                      %Refresh the system plot at ~20 Hz.
 
 %Enable data streaming.
-Vulintus_Behavior_Stream_Enable(behavior, true, behavior.ui.port);          %Enable streaming.
+Vulintus_Behavior_Stream_Enable(behavior, true, [0, behavior.ui.port]);     %Enable streaming.
 behavior.run = Vulintus_Behavior_Run_Class.session;                         %Set the run variable to session mode.
 
 
@@ -70,8 +72,8 @@ while isequal(behavior.run.root,'session')                                  %Loo
             ~behavior.session.trial(end).timeout()                          %Loop until the end of the trial.
         behavior.ctrl.stream.read(0.005);                                   %Read and process any new streaming data.
     end
-    
-    stop(timerfind('Name','ttl_timer'));                                    %Stop any TTL timer.
+
+    behavior.session.fcn.stop_ttl();                                        %Stop any ongoing TTL pulse.
 
     switch behavior.run                                                     %Switch between the recognized run cases.
        
@@ -82,20 +84,31 @@ while isequal(behavior.run.root,'session')                                  %Loo
             
         case Vulintus_Behavior_Run_Class.session_webcam_preview             %If the user wants to open a webcam preview...    
             Vulintus_Behavior_Launch_Webcam_Preview;                        %Call the toolbox function to launch a webcam preview.
-            behavior.run = Vulintus_Behavior_Run_Class.session;             %Set the run variable back to session mode.            
+            behavior.session.delete_last_trial();                           %Delete the last trial data.
+
+        otherwise                                                           %For any other case...
+            if isequal(behavior.run.root,'session')                         %If the session is still active.
+                behavior.session.delete_last_trial();                       %Delete the last trial data.
+            end
             
     end         
+    if isequal(behavior.run.root,'session')                                 %If the session is still active.
+        behavior.run = Vulintus_Behavior_Run_Class.session;                 %Set the run variable back to general session mode.   
+    end
     
 end
     
 %Stop the various display timers.
 stop(display_timer);                                                        %Stop the display timer.
 stop(session_timer);                                                        %Stop the session timer.
-stop(timerfind('Name','ttl_timer'));                                        %Stop the TTL timer.
-delete(timerfind('Name','ttl_timer'));                                      %Delete the TTL timer.
+obj = timerfind('Name','ttl_timer');                                        %Find any TTL timers.
+if ~isempty(obj)                                                            %If any timers were found...
+    stop(timerfind);                                                        %Stop any active behavior timers.
+    delete(timerfind);                                                      %Delete any active behavior timers.
+end
 
 %Stop the data stream and request one last clock synchronization block.
-Vulintus_Behavior_Stream_Enable(behavior, false, behavior.ui.port);         %Disable streaming.
+Vulintus_Behavior_Stream_Enable(behavior, false);                           %Disable streaming.
 if is_fcn_field(behavior.session.fcn,'clock_sync')                          %If a clock synchronization function has been set...
     behavior.session.fcn.clock_sync();                                      %Request a clock synchronization block.
 end
@@ -105,7 +118,7 @@ while toc(behavior.session.timer.main) < wait_time                          %Loo
 end
 
 %Close the session data file.
-behavior.session.file.close();
+behavior.session.file.data.close();
 
 %Clear any residual values from the serial line.
 behavior.ctrl.otsc.clear(0.1);                                              
@@ -118,4 +131,5 @@ if isfield(behavior.ui,'msgbox')                                            %If 
 end
 
 %Update all of the uicontrols.
+behavior.ui.btn.stimulate.Text = 'STIMULATE';                               %Revert the stimulate button text to the default.
 Vulintus_Behavior_Update_Controls(behavior, 'idle');                        %Call the function to update all of the uicontrols.

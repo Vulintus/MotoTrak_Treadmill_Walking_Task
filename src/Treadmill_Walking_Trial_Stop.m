@@ -16,9 +16,14 @@ function Treadmill_Walking_Trial_Stop(behavior)
 
 t = behavior.session.count.trial;                                           %Copy the current trial index to a simpler variable.
 behavior.session.trial(t).stop();                                           %Stop the trial clock.
+if behavior.session.timer.ttl.Running                                       %If the TTL timer is running...
+    stop(behavior.session.timer.ttl);                                       %Stop the TTL timer.
+end
+
+behavior.ui.btn.stimulate.Text = 'STIMULATE';                               %Update the stimulate button text.
 
 behavior.ui.table.trial.Data{end,end-1} = ...
-    behavior.session.trial(t).timer.ttl.TasksExecuted;                      %List the number of stimulation pulses.
+    sprintf('%1.0f',behavior.session.timer.ttl.TasksExecuted);              %List the number of stimulation pulstrains.
 behavior.ui.table.trial.Data{end,end} = ...
     sprintf('%1.0f mm', behavior.status.total_distance);                    %Update the distance traveled in the table.
 

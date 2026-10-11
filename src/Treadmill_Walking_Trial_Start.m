@@ -12,6 +12,8 @@ function Treadmill_Walking_Trial_Start(behavior)
 %   UPDATE LOG:
 %   2025-02-09 - Drew Sloan - Function first implemented, adapted from
 %                             "Vibrotactile_Detection_Start_Trial.m".
+%   2025-08-25 - Drew Sloan - Moved the TTL timer to the session
+%                             initialization function.
 %
 
 
@@ -26,43 +28,38 @@ behavior.ui.edit.rewards.Value = ...
     sprintf('%1.0f',behavior.session.count.trial);                          %Update the trial count display.
 
 %Write the trial number to the file.
-behavior.session.file.write{'TRIAL_START_SERIAL_DATE'}(behavior.session.count.trial);     
+behavior.session.file.data.write{'TRIAL_START_SERIAL_DATE'}(behavior.session.count.trial);     
 if behavior.status.idle                                                     %If the ball was idle on the last reading.                        
-    behavior.session.file.write{'AMBULATION_XY_THETA'}(behavior.status.last_read,...
+    behavior.session.file.data.write{'AMBULATION_XY_THETA'}(behavior.status.last_read,...
         behavior.status.xy, behavior.status.direction);                     %Write the previous datapoint to the file.
     behavior.status.idle = false;                                           %Indicate the ball is not idle.
 end     
 behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.             
 
-if is_fcn_field(behavior.session.fcn,'reset_count')                         %If a treadmill count reset function has been set...
-    behavior.session.fcn.reset_count();                                     %Reset the display on the treadmill.
-end
-
-new_table_row = {   t,...                                                   %"Trial"
+new_table_row = {   sprintf('%1.0f',t),...                                  %"Trial"
                     char(datetime,'hh:mm:ss'),...                           %"Time"
-                    '-',...                                                 %"Stim. Dur."
-                    '-',...                                                 %"Stim. IPI"
-                    '-',...                                                 %"Stim. Count"
+                    '-',...                                                 %"Pulse Dur."
+                    '-',...                                                 %"Pulse IPI"
+                    '-',...                                                 %"Pulses/Train"
+                    '-',...                                                 %"Train IPP"
+                    '-',...                                                 %"Train Count"
                     '-',...                                                 %"Distance"
                 };                                                          %Create a new table row.                       
 
-behavior.session.trial(t).timer(1).ttl = timerfind('Name','ttl_timer');     %Check for an existing TTL timer.
-if isempty(behavior.session.trial(t).timer.ttl)                             %If no existing timer was found...
-    behavior.session.trial(t).timer.ttl = timer('Name','ttl_timer');        %Create a new timer object.
-end
-if is_fcn_field(behavior.session.fcn,'send_ttl')                            %If this session has TTL-sending enabled...
-    behavior.session.trial(t).timer.ttl.ExecutionMode = 'fixedRate';        %Set the callback timing to onset-to-onset.
-    behavior.session.trial(t).timer.ttl.BusyMode = 'drop';                  %Drop a callback if the previous one hasn't executed.
-    behavior.session.trial(t).timer.ttl.Period = ...
-        behavior.session.params.ttl_pulsetrain_ipp;                         %Set the stimulation inter-pulse period.
-    behavior.session.trial(t).timer.ttl.TasksToExecute = ...
-        behavior.session.params.ttl_pulsetrain_n;                           %Set the number of stimulation pulses.
-    behavior.session.trial(t).timer.ttl.TimerFcn = ...
-        {@Treadmill_Walking_Timer_Callback_TTL, behavior.session.fcn};      %Set the main timer callback.
-    start(behavior.session.trial(t).timer.ttl);                             %Start the TTL timer.
-    new_table_row{3} = behavior.session.params.ttl_duration;                %"Stim. Dur."
-    new_table_row{4} = behavior.session.params.ttl_pulsetrain_ipp;          %"Stim. IPI"
-    new_table_row{5} = '-';                                                 %"Stim. Count"
+if is_fcn_field(behavior.session.fcn,'start_ttl')                           %If this session has TTL-sending enabled...
+    start(behavior.session.timer.ttl);                                      %Start the TTL timer.
+    new_table_row{3} = ...
+        sprintf('%1.3f',behavior.session.params.ttl_pulse_dur);             %"Pulse Dur."
+    new_table_row{4} =  ...
+        sprintf('%1.3f',behavior.session.params.ttl_pulse_ipi);             %"Pulse IPI"
+    if behavior.session.params.ttl_pulsetrain_n ~= 65535                    %If we're not doing infinite pulses...
+        new_table_row{5} = ...
+            sprintf('%1.0f',behavior.session.params.ttl_pulsetrain_n);      %"Pulses/Train"
+    end
+    if behavior.session.params.ttl_pulsetrain_ipp > 0                       %If an inter-pulsetrain period is set...
+        new_table_row{6} = ...
+            sprintf('%1.3f',behavior.session.params.ttl_pulsetrain_ipp);    %"Train IPP"
+    end    
 end
 
 behavior.session.trial(t).start();                                          %Start the trial clock.
@@ -70,14 +67,12 @@ behavior.session.trial(t).start();                                          %Sta
 behavior.ui.table.trial.Data(end+1,:) = new_table_row;                      %Clear the table data.
 scroll(behavior.ui.table.trial,'bottom');                                   %Scroll to the bottom of the table.
 
+behavior.ui.btn.stimulate.Text = {'STOP'; 'STIMULATION'};                   %Update the stimulate button text.
+
 str = sprintf('%s - Trial #%1.0f...',...
         char(behavior.session.trial(t).time.start.datetime,'HH:mm:ss'),...
         behavior.session.count.trial);                                      %Create a text string.
 Add_Msg(behavior.ui.msgbox,str);                                            %Show the text string on the messagebox.
 
 
-%TTL timer main callback.
-function Treadmill_Walking_Timer_Callback_TTL(~, ~, fcn)
-serial_date = convertTo(datetime('now'),'datenum');                         %Grab the current serial date number.
-fcn.send_ttl();                                                             %Send a TTL pulse.
-fcn.write_ttl_fcn(serial_date);                                             %Write the TTL timing to file.
+

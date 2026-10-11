@@ -21,9 +21,9 @@ ui.label.hits.Text = "TRIAL COUNT: ";                                       %Upd
 
 %Initialize the table.
 ui.table.trial.Data = {};                                                   %Clear the table data.
-ui.table.trial.ColumnName = {'Trial', 'Time', 'Stim. Dur.',...
-    'Stim. IPI','Stim. Count','Distance'};                                  %Set the table column headings.
-ui.table.trial.ColumnWidth = {50, 100, 100, 100, 100, 'auto'};              %Set the column widths.
+ui.table.trial.ColumnName = {'Trial', 'Time', 'Pulse Dur.',...
+    'Pulse IPI','Pulses/Train','Train IPP','Train Count','Distance'};       %Set the table column headings.
+ui.table.trial.ColumnWidth = {40, 60, 75, 75, 85, 80, 80, 'auto'};          %Set the column widths.
 ui.table.trial.RowName = [];                                                %Remove the row names.
 ui.table.trial.ButtonDownFcn =  @Vulintus_Copy_to_Clipboard;                %Copy the table to the clipboard.
 

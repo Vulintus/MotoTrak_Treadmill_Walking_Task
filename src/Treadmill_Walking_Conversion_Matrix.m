@@ -8,7 +8,7 @@ function A = Treadmill_Walking_Conversion_Matrix(p, sensor_rot)
 %   readings into 3-dimensional angular velocity. The input arguments are
 %   as follows:
 %
-%       pos        = 3x3 matrix of spherical coordinate position vectors
+%       p          = 3x3 matrix of spherical coordinate position vectors
 %                    (theta, phi, radius), in which each row is the 
 %                    position vector for one velocity reading. In Vulintus 
 %                    convention, the first 2 readings come from sensor #1
