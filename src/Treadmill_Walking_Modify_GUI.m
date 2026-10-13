@@ -10,7 +10,10 @@ function ui = Treadmill_Walking_Modify_GUI(ui, varargin)
 %   
 %   UPDATE LOG:
 %   2025-02-10 - Drew Sloan - Function first created.
+%   2026-10-11 - Codex - Added separate stimulation and walking-reward counts.
 %
+
+
 
 
 ui.btn.stimulate = ui.btn.feed;                                             %Copy the feed button handle to a "stimulate" field.
@@ -18,6 +21,29 @@ ui.btn = rmfield(ui.btn,'feed');                                            %Rem
 ui.btn.stimulate.Text = 'STIMULATE';                                        %Update the text on the stimulate button.
 
 ui.label.hits.Text = "TRIAL COUNT: ";                                       %Update the hits/trials label.
+
+%Split the existing count region into independent stimulation/reward fields.
+%Keep edit.rewards as the trial count for compatibility with the trial code.
+label_pos = ui.label.hits.Position;
+edit_pos = ui.edit.rewards.Position;
+region_width = edit_pos(1) + edit_pos(3) - label_pos(1);
+half_width = region_width/2;
+ui.label.hits.Text = 'TRIALS:';
+ui.label.hits.FontSize = min(14,ui.label.hits.FontSize);
+ui.edit.rewards.FontSize = min(12,ui.edit.rewards.FontSize);
+ui.label.hits.Position = [label_pos(1:2),0.62*half_width,label_pos(4)];
+ui.edit.rewards.Position = [label_pos(1)+0.62*half_width,...
+    edit_pos(2),0.36*half_width,edit_pos(4)];
+ui.label.walk_rewards = uilabel(ui.label.hits.Parent,...
+    'Text','REW. OFF:',...
+    'Position',[label_pos(1)+half_width,label_pos(2),0.62*half_width,label_pos(4)],...
+    'FontName',ui.label.hits.FontName,'FontSize',ui.label.hits.FontSize,...
+    'FontWeight','bold','HorizontalAlignment','right');
+ui.edit.walk_rewards = uieditfield(ui.edit.rewards.Parent,'text',...
+    'Editable','off','Value','0','Enable','on',...
+    'Position',[label_pos(1)+1.62*half_width,edit_pos(2),0.36*half_width,edit_pos(4)],...
+    'FontName',ui.edit.rewards.FontName,'FontSize',ui.edit.rewards.FontSize,...
+    'FontWeight','bold','HorizontalAlignment','center');
 
 %Initialize the table.
 ui.table.trial.Data = {};                                                   %Clear the table data.

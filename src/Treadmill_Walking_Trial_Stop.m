@@ -11,12 +11,22 @@ function Treadmill_Walking_Trial_Stop(behavior)
 %   
 %   UPDATE LOG:
 %   2025-02-11 - Drew Sloan - Function first implemented
+%   2026-10-11 - Codex - Guarded inactive trials and stopped owned TTL output.
 %
 
 
+
+
 t = behavior.session.count.trial;                                           %Copy the current trial index to a simpler variable.
+if t == 0 || isempty(behavior.session.trial) || ~behavior.session.trial(t).active
+    return
+end
 behavior.session.trial(t).stop();                                           %Stop the trial clock.
-if behavior.session.timer.ttl.Running                                       %If the TTL timer is running...
+if is_fcn_field(behavior.session.fcn,'stop_ttl')
+    behavior.session.fcn.stop_ttl();
+end
+if isvalid(behavior.session.timer.ttl) && ...
+        strcmp(behavior.session.timer.ttl.Running,'on')                                       %If the TTL timer is running...
     stop(behavior.session.timer.ttl);                                       %Stop the TTL timer.
 end
 

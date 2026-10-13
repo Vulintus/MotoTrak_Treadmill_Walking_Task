@@ -14,7 +14,11 @@ function Treadmill_Walking_Trial_Start(behavior)
 %                             "Vibrotactile_Detection_Start_Trial.m".
 %   2025-08-25 - Drew Sloan - Moved the TTL timer to the session
 %                             initialization function.
+%   2026-10-11 - Codex - Preserved independent walking-reward history and
+%                        avoided extra clock requests while rewards are enabled.
 %
+
+
 
 
 %Create a new Vulintus_Behavior_Trial_Class instance.
@@ -34,8 +38,9 @@ if behavior.status.idle                                                     %If 
         behavior.status.xy, behavior.status.direction);                     %Write the previous datapoint to the file.
     behavior.status.idle = false;                                           %Indicate the ball is not idle.
 end     
-behavior.session.fcn.clock_sync();                                          %Request a clock synchronization block.             
-
+if ~behavior.session.params.reward_enable && is_fcn_field(behavior.session.fcn,'clock_sync')
+    behavior.session.fcn.clock_sync();
+end                                          %Request a clock synchronization block.
 new_table_row = {   sprintf('%1.0f',t),...                                  %"Trial"
                     char(datetime,'hh:mm:ss'),...                           %"Time"
                     '-',...                                                 %"Pulse Dur."

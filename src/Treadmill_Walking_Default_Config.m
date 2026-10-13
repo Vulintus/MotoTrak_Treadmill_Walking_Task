@@ -3,6 +3,8 @@ function Treadmill_Walking_Default_Config(behavior)
 %
 % Treadmill_Walking_Default_Config.m - Vulintus, Inc.
 %
+%   copyright 2024, Vulintus, Inc.
+%
 %   TREADMILL_WALKING_DEFAULT_CONFIG loads the default configuration 
 %   settings for the MotoTrak treadmill walking behavior program running
 %   through the Vulintus Common Behavior framework.
@@ -10,9 +12,14 @@ function Treadmill_Walking_Default_Config(behavior)
 %   UPDATE LOG:
 %   2024-11-14 - Drew Sloan - Function first created, adapted from
 %                             "Vibrotactile_Detection_Default_Config.m".
-%   2025-08-07 - Drew sloan - Added handling functions for incoming OTSC
+%   2025-08-07 - Drew Sloan - Added handling functions for incoming OTSC
 %                             packets.
+%   2026-10-11 - Codex - Added walking-reward defaults and reboot handling;
+%                        matched the default CPI to the prior motion scaling.
+%   2026-10-12 - Codex - Set the default liquid reward trigger to 10 ms.
 %
+
+
 
 
 if ~isfield(behavior.stage,'sync')                                          %If the stages synchronization field hasn't been created yet.
@@ -32,7 +39,7 @@ behavior.stage.sync.google_spreadsheet_edit_url = ...
 %the sphere. The x-axis is parallel to the animal's rostral-caudal axis,
 %the y-axis is parallel to the animal's medial-lateral axis, and the z-axis 
 % is parallel to the animal's ventral-dorsal axis.
-behavior.program.params.cpi = 400;                                          %Sensor counts per inch.
+behavior.program.params.cpi = 160;                                          %Sensor counts per inch.
 behavior.program.params.sampling_rate = 40;                                 %Sensor sampling rate, in Hz.
 behavior.program.params.ball_radius = 195.5/2;                              %Spherical ball radius.
 behavior.program.params.sensor_pos = [...
@@ -41,6 +48,17 @@ behavior.program.params.sensor_pos = [...
     -60,   -40,   behavior.program.params.ball_radius;
     ];                                                                      %Sensor position vectors, in spherical coordinates (theta, phi, radius).
 behavior.program.params.sensor_angle = 45;                                  %Angle of the sensor's x-axis to the azimuthal plane of the sphere, in degrees.
+
+%CPI is a calibration value; the current OTSC API cannot set sensor CPI.
+%The 160 default preserves the original parser scaling; match it to firmware.
+
+%Optional walking rewards (legacy stages remain unrewarded).
+behavior.program.params.reward_enable = false;
+behavior.program.params.reward_thresh = NaN;
+behavior.program.params.reward_period = NaN;
+behavior.program.params.reward_dir = NaN;
+behavior.program.params.reward_bound = NaN;
+behavior.program.params.reward_trigger_duration_ms = 10;                    %Liquid dispenser trigger duration.
 
 %Display options.
 behavior.program.params.ball_view_angle = [0, 45];                          %View angle for the ball diagram [azimuth, elevation].
@@ -83,3 +101,9 @@ behavior.ctrl.stream.fcn('TTL_PULSETRAIN_ABORT') = ...
     @(src, varargin)behavior.program.fcn.process_input(...
     'TTL_PULSETRAIN_ABORT',...
     src, varargin{:});                                                      %Aborted TTL pulsetrain indicator.
+
+%Reset reward qualification after a controller/treadmill reboot.
+behavior.ctrl.stream.fcn('REBOOTING') = ...
+    @(src,varargin)behavior.program.fcn.process_input(...
+    'REBOOTING',...
+    src,varargin{:});
